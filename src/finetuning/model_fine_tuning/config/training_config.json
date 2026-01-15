@@ -1,0 +1,19 @@
+
+
+{
+  "model_name": "microsoft/phi-2",
+  "max_seq_len": 256,
+  "all_data_file":  "/Users/ishaangupta/PycharmProjects/CRMManras/src/finetuning/model_fine_tuning/data/training_examples_updated.jsonl",
+  "train_file": "/Users/ishaangupta/PycharmProjects/CRMManras/src/finetuning/model_fine_tuning/data/train.jsonl",
+  "eval_file": "/Users/ishaangupta/PycharmProjects/CRMManras/src/finetuning/model_fine_tuning/data/eval.jsonl",
+  "output_dir": "/Users/ishaangupta/PycharmProjects/CRMManras/src/finetuning/model_fine_tuning/models/phi-2",
+  "per_device_train_batch_size": 1,
+  "per_device_eval_batch_size": 1,
+  "gradient_accumulation_steps": 2,
+  "num_train_epochs": 1,
+  "learning_rate": 1e-4,
+  "logging_steps": 50,
+  "eval_strategy": "no",
+  "save_strategy" : "no",
+  "warmup_ratio": 0.03
+}
