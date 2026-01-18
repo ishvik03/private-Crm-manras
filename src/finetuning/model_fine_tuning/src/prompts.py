@@ -3,7 +3,15 @@ from pathlib import Path
 from typing import Dict
 
 
-PROMPT_DIR = Path("/Users/ishaangupta/PycharmProjects/CRMManras/src/finetuning/model_fine_tuning/prompts")
+BASE_DIR = Path(__file__).resolve().parent.parent
+#this moves you OUT of the inner `src/`
+
+DEFAULT_PROMPT_DIR = BASE_DIR / "prompts"
+
+PROMPT_DIR = Path(os.getenv("PROMPT_DIR", DEFAULT_PROMPT_DIR))
+
+if not PROMPT_DIR.exists():
+    raise FileNotFoundError(f"Prompt directory not found: {PROMPT_DIR}")
 
 CORE_ISSUE_MAP = {
     # Billing
