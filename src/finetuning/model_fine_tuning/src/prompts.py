@@ -1,7 +1,7 @@
 # src/prompts.py
 from pathlib import Path
 from typing import Dict
-
+import os 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 #this moves you OUT of the inner `src/`
