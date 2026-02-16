@@ -3,6 +3,8 @@ from typing import Dict, Any, Tuple
 from datasets import load_dataset, Dataset
 from transformers import AutoTokenizer
 from .prompts import load_system_prompts, get_prompt_for_issue
+import json 
+
 
 def load_tokenizer(model_name: str):
     tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -15,8 +17,10 @@ def load_tokenizer(model_name: str):
 def build_conversation_text(messages):
     lines = []
     for m in messages:
-        content = m["content"].strip()
-        lines.append(f"{m["role"]}: {content}")
+        role = m.get("role", "").strip().lower()
+        content = (m.get("content", "") or "").strip()
+        lines.append(f"{role}: {content}")
+    
     return "\n".join(lines)
 
 def build_full_prompt(system_prompt, messages):
@@ -44,7 +48,7 @@ def prepare_datasets(
     train_file: str,
     eval_file: str,
     max_seq_len: int
-) -> Tuple[Dataset, Dataset, AutoTokenizer]:
+) -> Tuple[Dataset, Dataset]:
     """
     For each example:
       - build system prompt using core_reason/sentiment/priority
@@ -53,37 +57,54 @@ def prepare_datasets(
       - tokenize into input_ids/attention_mask
     """
     tokenizer = load_tokenizer(model_name)
-    prompts = load_system_prompts()  # billing/shipping/technical files
+    # prompts = load_system_prompts()  # billing/shipping/technical files
 
     raw_train = load_dataset("json", data_files=train_file, split="train")
-    raw_eval  = load_dataset("json", data_files=eval_file,  split="train")
+    raw_eval = None
+    if eval_file:
+      raw_eval = load_dataset("json", data_files=eval_file, split="train")
+    
 
 
 
     def preprocess(example: Dict[str, Any]) -> Dict[str, Any]:
-        core_reason = example.get("core_reason") or example.get("core_issue")
-        sentiment   = example.get("sentiment", "unknown")
-        priority    = example.get("priority", "unknown")
+        
+        messages = example["messages"]
+        conversation_signals = example.get("conversation_signals", None)
+        target = example.get("target", None)
+         
+         
+        # Combine output fields into one JSON object the model must generate
+        # If your dataset only has "target" and not "conversation_signals", adjust here.
+         
+        output_obj = {}
+         
+        if conversation_signals is not None:
+          output_obj["conversation_signals"] = conversation_signals
+         
+        if target is not None:
+          output_obj["target"] = target
 
-        base_prompt = get_prompt_for_issue(core_reason, prompts)
+        
 
         system_content = (
-            "You are an internal reasoning engine."
-            # + base_prompt
-            # + f"\n\nCustomer sentiment: {sentiment}."
-            # + f"\nTicket priority: {priority}."
+            "You are an assistant that extracts structured conversation_signals and selects a tool call.\n"
+        "Return ONLY valid JSON. No markdown. No extra text.\n"
+        "Follow the schema exactly.\n"
         )
 
-        system_prompt = {"role": "system", "content": system_content}
+        # system_prompt = {"role": "system", "content": system_content}
         # 1) Visible chat
 
-        # messages = [{"role": "system", "content": system_prompt}] + example["messages"]
+        # messages_overall = system_prompt + messages
+        
 
-        input_text = build_full_prompt(system_prompt, example['messages'])
+        input_text = build_full_prompt(system_content , messages)
 
-        target_reasoning = example["agent_reasoning"].strip()
+        completion = json.dumps(output_obj, ensure_ascii=False)
 
-        full_text = input_text + target_reasoning
+
+        full_text = input_text + completion
 
 
         # chat_prompt = tokenizer.apply_chat_template(
@@ -94,18 +115,20 @@ def prepare_datasets(
 
         # 2) Hidden reasoning target
 
-        tokenized = tokenizer(
-            full_text,
-            truncation=True,
-            max_length=max_seq_len
-        )
+        # tokenized = tokenizer(
+        #     full_text,
+        #     truncation=True,
+        #     max_length=max_seq_len
+        # )
 
-        return {
-            "input_ids": tokenized["input_ids"],
-            "attention_mask": tokenized["attention_mask"]
-        }
+        # return {
+        #     "input_ids": tokenized["input_ids"],
+        #     "attention_mask": tokenized["attention_mask"]
+        # }
+
+        return {"text": full_text}
 
     train_ds = raw_train.map(preprocess, remove_columns=raw_train.column_names)
-    eval_ds  = raw_eval.map(preprocess,  remove_columns=raw_eval.column_names)
+    eval_ds = raw_eval.map(preprocess, remove_columns=raw_eval.column_names) if raw_eval else None
 
-    return train_ds, eval_ds, tokenizer
+    return train_ds, eval_ds

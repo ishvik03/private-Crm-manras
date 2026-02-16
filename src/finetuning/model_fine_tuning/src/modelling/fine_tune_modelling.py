@@ -8,6 +8,7 @@ This file is responsible for:
 3) Preparing it for LoRA training
 4) Returning a LoRA config that targets the right modules
 
+
 Common pitfalls:
 - Not using quantization -> OOM on most GPUs
 - Wrong target_modules -> LoRA doesn't learn
@@ -23,8 +24,8 @@ torch.cuda.empty_cache()
 
 def load_base_model(
     model_name: str,
-    use_4bit: bool = False,
-    f16: bool = False,
+    use_4bit: bool = True,
+    f16: bool = True,
     device_map: str = "auto",
     trust_remote_code: bool = False,
 ) -> AutoModelForCausalLM:
@@ -59,6 +60,7 @@ def load_base_model(
 
 
     quant_config = None
+
     if use_4bit:
         # BitsAndBytes config for 4-bit QLoRA style loading
         # nf4 is typically best; double quant improves compression
@@ -72,13 +74,13 @@ def load_base_model(
     # Load model
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
-        quantization_config=quant_config,  # None means full precision
+        quantization_config= quant_config,  # None means full precision
         low_cpu_mem_usage=True,
         torch_dtype= compute_dtype if not use_4bit else None,  # dtype handled by bnb ,if 4bit let BitsAndBytes choose dtype → and do just None for now
-        # device_map=device_map,
+        device_map=device_map,
         # trust_remote_code=trust_remote_code,
     )
-    model.to("cpu")
+    # model.to("cpu")
 
 
     # IMPORTANT:
@@ -96,8 +98,8 @@ def load_base_model(
 
 
 def get_lora_config(
-    r: int = 8,
-    lora_alpha: int = 16,
+    r: int = 16, #last was 8 (this is rank)
+    lora_alpha: int = 32,
     lora_dropout: float = 0.05,
     bias: str = "none",
     task_type: str = "CAUSAL_LM",
@@ -122,16 +124,19 @@ def get_lora_config(
     #     "dense",
     # ]
 
-    target_modules = [
-        "q_proj",
-        "v_proj",
-    ]
 
+    
+    # Check if expected modules exist
+    targets_modules = ["q_proj","k_proj","v_proj","o_proj","gate_proj","up_proj","down_proj"]
+    
+
+
+    
     return LoraConfig(
         r=r,                       # rank: higher = more capacity but more VRAM
         lora_alpha=lora_alpha,     # scaling factor; commonly 2*r
         lora_dropout=lora_dropout, # dropout on LoRA weights
         bias=bias,                 # usually "none" for QLoRA
         task_type=task_type,       # causal LM fine-tuning
-        target_modules=target_modules,
+        target_modules=targets_modules,
     )

@@ -2,7 +2,7 @@ from peft import get_peft_model
 from transformers import TrainingArguments
 from trl import SFTTrainer
 from .config_loader import load_training_config
-from .prepare_datasets import prepare_datasets
+from .prepare_datasets import prepare_datasets,load_tokenizer
 from .modelling.fine_tune_modelling import load_base_model, get_lora_config
 from .logging_utils import setup_logger
 import inspect
@@ -29,7 +29,7 @@ def run_training():
 
     #I want to know that every model type or company has their own tokeniser,
     #So do we just return that base level tokeniser or do we return that base level activated or used for this specific case
-    train_ds, eval_ds, tokenizer = prepare_datasets(
+    train_ds, eval_ds = prepare_datasets(
         model_name=model_name,
         train_file=cfg["train_file"],
         eval_file=cfg["eval_file"],
@@ -40,6 +40,7 @@ def run_training():
 
     model_m = load_base_model(model_name)
     logger.info("Base model is loaded !!!")
+
     peft_config = get_lora_config()
     logger.info("LORA Configs are loaded  !!!")
 
@@ -48,7 +49,10 @@ def run_training():
     #into specific layers, without modifying the original weights.
     model = get_peft_model(model_m, peft_config) #doubt
     logger.info("Get peft model is also done   !!!")
-    model.to("cpu")
+    model.print_trainable_parameters()
+
+    
+
 
     training_args = TrainingArguments(
         output_dir=cfg["output_dir"], ####
@@ -74,14 +78,16 @@ def run_training():
 
     print("Saved to SFTT_arguments_signature.txt")
 
+    my_tokenizer = load_tokenizer(model_name)
 
     trainer = SFTTrainer(
         model=model,
+        tokeniser = my_tokenizer,
         args=training_args,
         train_dataset=train_ds,
-        eval_dataset=eval_ds,
-        peft_config=peft_config,
-        processing_class=tokenizer,
+        eval_dataset=eval_ds if eval_ds else None,
+        dataset_text_field="text",
+        packing = False 
     )
 
     logger.info("Starting training...")
