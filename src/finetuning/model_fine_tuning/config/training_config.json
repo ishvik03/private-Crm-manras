@@ -6,7 +6,7 @@
   "all_data_file":  "/content/private-Crm-manras/src/finetuning/model_fine_tuning/data/step1LLM_Complete.jsonl",
   "train_file": "/content/private-Crm-manras/src/finetuning/model_fine_tuning/data/train.jsonl",
   "eval_file": "/content/private-Crm-manras/src/finetuning/model_fine_tuning/data/eval.jsonl",
-  "output_dir": "/Users/ishaangupta/PycharmProjects/CRMManras/src/finetuning/model_fine_tuning/models/phi-2",
+  "output_dir": "/content/drive/MyDrive/models/",
   "per_device_train_batch_size": 1,
   "per_device_eval_batch_size": 1,
   "gradient_accumulation_steps": 2,
@@ -17,6 +17,7 @@
   "save_strategy" : "no",
   "warmup_ratio": 0.03
 }
+
 
 
 

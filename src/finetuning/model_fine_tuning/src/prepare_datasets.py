@@ -80,15 +80,7 @@ No markdown. No explanations. No extra keys.
 Rules:
 - Use "unknown" when the conversation does not provide enough info.
 - Do not invent details.
-- Enums:
-  - issue.category: billing, technical, shipping, account, returns, unknown
-  - reproduction.frequency: always, intermittent, once, unknown
-  - reproduction.scope: single_device, account_wide, unknown
-  - environment.platform: ios, android, web, unknown
-  - environment.app_version_status: latest, outdated, unknown
-  - impact_assessment.severity_hint: low, medium, high, unknown
-  - impact_assessment.customer_sentiment: neutral, frustrated, angry, unknown
-  - target.priority: low, medium, high
+
 
 Output schema:
 
@@ -128,16 +120,39 @@ Output schema:
 }
 """
 
-        # Build input prompt
-        input_text = build_full_prompt(system_content, messages)
+         # ---- Build Prompt Text ----
+        prompt_text = build_full_prompt(system_content, messages).strip()
 
-        # Gold completion
-        completion = json.dumps(output_obj, ensure_ascii=False)
+        # ---- Build Completion Text ----
+        completion_text = json.dumps(output_obj, ensure_ascii=False)
+        
+        # ---- TOKENIZE SEPARATELY ----
+        prompt_tokens = tokenizer(prompt_text, add_special_tokens=False)
+        completion_tokens = tokenizer(completion_text, add_special_tokens=False)
 
-        # IMPORTANT: clean separation
-        full_text = input_text.strip() + "\n" + completion
+        prompt_ids = prompt_tokens["input_ids"]
+        completion_ids = completion_tokens["input_ids"]
 
-        return {"text": full_text}
+        # ---- TRUNCATION LOGIC ----
+        # Ensure total length <= max_seq_len
+        total_length = len(prompt_ids) + len(completion_ids)
+
+        if total_length > max_seq_len:
+            # truncate prompt first (keep completion intact)
+            overflow = total_length - max_seq_len
+            prompt_ids = prompt_ids[:-overflow]
+
+        input_ids = prompt_ids + completion_ids
+        attention_mask = [1] * len(input_ids)
+
+        # ---- LABEL MASKING ----
+        labels = [-100] * len(prompt_ids) + completion_ids
+
+        return {
+            "input_ids": input_ids,
+            "attention_mask": attention_mask,
+            "labels": labels,
+        }
 
     # ---- Apply mapping ----
     train_ds = raw_train.map(preprocess, remove_columns=raw_train.column_names)
