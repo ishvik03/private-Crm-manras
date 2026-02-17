@@ -48,6 +48,8 @@ def run_training():
     #get_peft_model :---  It takes a pretrained model and injects LoRA adapters
     #into specific layers, without modifying the original weights.
     model = get_peft_model(model_m, peft_config) #doubt
+    model.config.use_cache = False
+
     logger.info("Get peft model is also done   !!!")
     model.print_trainable_parameters()
 
@@ -71,23 +73,26 @@ def run_training():
 
     logger.info("Initializing SFTTrainer...")
 
-    sig =  inspect.signature(SFTTrainer.__init__)
+    # sig =  inspect.signature(SFTTrainer.__init__)
 
-    with open("SFTT_arguments_signature.txt", "w") as f:
-        f.write(str(sig))
+    # with open("SFTT_arguments_signature.txt", "w") as f:
+    #     f.write(str(sig))
 
-    print("Saved to SFTT_arguments_signature.txt")
+    # print("Saved to SFTT_arguments_signature.txt")
 
     my_tokenizer = load_tokenizer(model_name)
 
+    def format_example(example):
+      return example["text"]
+
     trainer = SFTTrainer(
         model=model,
-        tokeniser = my_tokenizer,
+        # tokenizer = my_tokenizer,
+        processing_class=my_tokenizer,
         args=training_args,
         train_dataset=train_ds,
+        formatting_func=format_example,
         eval_dataset=eval_ds if eval_ds else None,
-        dataset_text_field="text",
-        packing = False 
     )
 
     logger.info("Starting training...")
@@ -96,7 +101,7 @@ def run_training():
 
     logger.info("Saving final model...")
     trainer.save_model(cfg["output_dir"])
-    tokenizer.save_pretrained(cfg["output_dir"])
+    my_tokenizer.save_pretrained(cfg["output_dir"])
     logger.info("Training complete.")
 
 if __name__ == "__main__":
