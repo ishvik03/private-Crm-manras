@@ -148,6 +148,8 @@ Output schema:
         # ---- LABEL MASKING ----
         labels = [-100] * len(prompt_ids) + completion_ids
 
+        
+
         return {
             "input_ids": input_ids,
             "attention_mask": attention_mask,
@@ -160,5 +162,10 @@ Output schema:
     eval_ds = None
     if raw_eval is not None:
         eval_ds = raw_eval.map(preprocess, remove_columns=raw_eval.column_names)
+    
+    train_ds.set_format(type="torch")
+
+    if eval_ds is not None:
+        eval_ds.set_format(type="torch")
 
     return train_ds, eval_ds

@@ -1,6 +1,7 @@
 from peft import get_peft_model
 from transformers import TrainingArguments
-from trl import SFTTrainer
+# from trl import SFTTrainer
+from transformers import Trainer
 from .config_loader import load_training_config
 from .prepare_datasets import prepare_datasets,load_tokenizer
 from .modelling.fine_tune_modelling import load_base_model, get_lora_config
@@ -82,18 +83,21 @@ def run_training():
 
     my_tokenizer = load_tokenizer(model_name)
 
-    def format_example(example):
-      return example["text"]
 
-    trainer = SFTTrainer(
-        model=model,
-        # tokenizer = my_tokenizer,
-        processing_class=my_tokenizer,
-        args=training_args,
-        train_dataset=train_ds,
-        formatting_func=format_example,
-        eval_dataset=eval_ds if eval_ds else None,
-    )
+    trainer = Trainer(
+          model=model,
+          args=training_args,
+          train_dataset=train_ds,
+          eval_dataset=eval_ds if eval_ds else None,
+      ) 
+    # trainer = SFTTrainer(
+    #     model=model,
+    #     processing_class=my_tokenizer,
+    #     args=training_args,
+    #     train_dataset=train_ds,
+    #     eval_dataset=eval_ds if eval_ds else None,
+    # )
+
 
     logger.info("Starting training...")
     trainer.train()
